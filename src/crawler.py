@@ -49,6 +49,7 @@ class Crawler:
         delay: float = 6.0,
         timeout: float = 10.0,
         user_agent: str = "COMP3011-SearchEngine/1.0 (Educational Crawler)",
+        max_pages: Optional[int] = None,
     ) -> None:
         """Initialise the crawler.
 
@@ -58,6 +59,9 @@ class Crawler:
                 (must be >= 6 to satisfy the assignment brief).
             timeout: HTTP socket timeout in seconds.
             user_agent: Value sent as the ``User-Agent`` request header.
+            max_pages: Optional cap on the number of pages to fetch.
+                ``None`` (the default) means crawl every reachable page.
+                Useful for quick smoke tests.
         """
         if delay < 6.0:
             # Defensive check -- the brief mandates a 6-second window.
@@ -70,6 +74,7 @@ class Crawler:
         self.delay: float = delay
         self.timeout: float = timeout
         self.user_agent: str = user_agent
+        self.max_pages: Optional[int] = max_pages
 
         # Domain we are allowed to crawl. Setting this once means we
         # do not have to re-parse ``base_url`` for every link check.
@@ -90,41 +95,58 @@ class Crawler:
 
     def crawl(self) -> dict[str, str]:
         """Run the full crawl and return all discovered pages.
-
+ 
         Returns:
             A dict mapping each successfully-fetched URL to its
             extracted plain text.
         """
         logger.info("Starting crawl at %s", self.base_url)
-
+ 
         # Use a list as a FIFO queue. ``collections.deque`` would be
         # marginally faster, but pages-per-crawl is small here so
         # readability wins.
         queue: list[str] = [self._normalise(self.base_url)]
-
+        page_count = 0
+ 
         while queue:
+            # Honour the optional page cap so users can run smoke
+            # tests without waiting for a full crawl.
+            if self.max_pages is not None and page_count >= self.max_pages:
+                logger.info(
+                    "Reached max_pages=%d, stopping crawl.", self.max_pages
+                )
+                break
+ 
             url = queue.pop(0)
-
+ 
             # Skip already-seen URLs. We add to ``visited`` only
             # *after* a successful fetch, but we also short-circuit
             # here to avoid enqueuing duplicates.
             if url in self.visited:
                 continue
-
+ 
             html = self.fetch(url)
             if html is None:
                 # Mark as visited so we do not retry indefinitely.
                 self.visited.add(url)
                 continue
-
+ 
             self.visited.add(url)
             self.pages[url] = self.extract_text(html)
-
+            page_count += 1
+ 
+            # Live progress -- we print directly so users see activity
+            # even when the logger is configured at WARNING level.
+            print(
+                f"  [{page_count}] Fetched {url} "
+                f"({len(queue)} URLs in queue)"
+            )
+ 
             # Enqueue any links we have not seen yet.
             for link in self.extract_links(html, url):
                 if link not in self.visited and link not in queue:
                     queue.append(link)
-
+ 
         logger.info("Crawl complete: %d pages fetched.", len(self.pages))
         return self.pages
 

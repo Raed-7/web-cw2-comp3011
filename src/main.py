@@ -152,18 +152,26 @@ class SearchCLI:
 
     def _cmd_build(self) -> None:
         """Run the crawler, build the index and persist it."""
-        print("Crawling website (this takes ~1 minute due to the 6s "
-              "politeness window)...")
-
+        # The site has ~50-80 pages once tag/author pages are
+        # included. With the mandatory 6s politeness window, this
+        # comes out to several minutes of wall-clock time.
+        print(
+            "Crawling website. This will take roughly 5-10 minutes "
+            "due to the mandatory 6-second politeness window between "
+            "requests. Progress will be shown below."
+        )
+        print()
+ 
         crawler = Crawler()
         pages = crawler.crawl()
-
+ 
         if not pages:
             # The crawler returns an empty dict if every fetch failed.
             print("[error] No pages were crawled. Check your network "
                   "connection and try again.")
             return
-
+ 
+        print()
         print(f"Crawled {len(pages)} pages. Building index...")
 
         # Reset the in-place indexer so a re-build never carries over
@@ -288,4 +296,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     sys.exit(main())
-    
