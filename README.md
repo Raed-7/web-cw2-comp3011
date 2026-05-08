@@ -84,7 +84,7 @@ A typical full crawl of `quotes.toscrape.com` collects **~210 pages** and indexe
  
 ```bash
 # 1. Clone the repository
-git clone <your-repo-url>
+git clone https://github.com/Raed-7/web-cw2-comp3011.git
 cd comp3011-search-engine
  
 # 2. Create a virtual environment (recommended)
